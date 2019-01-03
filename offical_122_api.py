@@ -166,7 +166,7 @@ def deal_js(html):
     js_code = re.findall('javascript">(.*?)</script>', html, re.S)[0]
     file_name = os.path.abspath('./js/{0}.js'.format(int(time.time())))
     with open(file_name, 'w', encoding='utf8') as f:
-        f.write(js_code)
+        f.write('{0};phantom.exit(0)'.format(js_code))
     cmd = 'phantomjs {0}'.format(file_name)
     os.popen(cmd)
 
@@ -265,3 +265,7 @@ def license_parser(form_data) -> _license:
     else:
         prov = config.no2prov.get(prov_code)
     return (car_no, car_no2, prov_code, prov)
+
+
+if __name__ == '__main__':
+    time.sleep(1000)
