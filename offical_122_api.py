@@ -265,14 +265,3 @@ def license_parser(form_data) -> _license:
     else:
         prov = config.no2prov.get(prov_code)
     return (car_no, car_no2, prov_code, prov)
-
-
-if __name__ == '__main__':
-    """测试数据，根据不同省份"""
-    data = {
-        'carNo': '皖J750H9',
-        'engineNo': 'C33687',
-    }
-
-    api = receive_form_data_from_api(data)
-    print(api)
