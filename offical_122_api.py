@@ -78,19 +78,24 @@ def receive_form_data_from_api(form_data) -> _api:
     license_data = license_parser(form_data)
     # # 准备获取验证码
     http = Http()
+
     # 访问主页
-    visit_home_page(http, license_data[-1])
+    # 2019-01-03 不请求主页
+    # visit_home_page(http, license_data[-1])
+
     while retry > 0:
         ocr_result = get_captcha(http, license_data[-1])
         if not ocr_result[2]:
             captcha = ocr_result[0]
             result = get_violation_data(http, license_data, captcha, form_data)
-            api = deal_response(result.decode('utf8'), api)
+            api = deal_response(result.decode('utf-8'), api)
             # 对code进行处理
             # code 499是验证码错误
             # code 500是请求参数错误
             if api.get('code') == 499:
                 do_cancle(ocr_result[1])
+                retry -= 1
+                continue
             break
         retry -= 1
 
@@ -142,7 +147,7 @@ def deal_code_521(js_text) -> _cookie:
     cookie_js = re.findall('document.cookie(.*?)\+\';Expires', evaled_func)[0]
     js_file = 'cookie{0};console.log(cookie);phantom.exit(0)'.format(cookie_js)
     # 保存js_file
-    file_name = './js/js_{0}.js'.format(int(time.time()))
+    file_name = os.path.abspath('./js/js_{0}.js'.format(int(time.time())))
     with open(file_name, 'w', encoding='utf8') as f:
         f.write(js_file)
     # 执行命令
@@ -158,7 +163,7 @@ def deal_js(html):
     """针对安徽省， 这个事逼省！
     """
     # 首先保存html
-    js_code = re.findall('<script>(.*?)</script>', html, re.S)[0]
+    js_code = re.findall('javascript">(.*?)</script>', html, re.S)[0]
     file_name = os.path.abspath('./js/{0}.js'.format(int(time.time())))
     with open(file_name, 'w', encoding='utf8') as f:
         f.write(js_code)
@@ -201,7 +206,7 @@ def get_captcha(http, prov) -> _ocr:
         request_id = js_dict.get('RequestId')
         rsp_data = json.loads(js_dict.get('RspData')).get('result')
     elif b'script' in result[0]:
-        deal_js(result[0])
+        deal_js(result[0].decode('utf-8'))
         # 然后重试
         refresh = True
 
