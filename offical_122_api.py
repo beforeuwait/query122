@@ -265,7 +265,3 @@ def license_parser(form_data) -> _license:
     else:
         prov = config.no2prov.get(prov_code)
     return (car_no, car_no2, prov_code, prov)
-
-
-if __name__ == '__main__':
-    time.sleep(1000)
