@@ -11,6 +11,7 @@ from HTTP.HttpApi import HttpApi
 from HTTP.utils import MethodCheckError
 from fateadm_ocr import do_ocr
 from fateadm_ocr import do_cancle
+from deal_sx_js import receive_html_and_deal
 
 # type
 
@@ -39,6 +40,12 @@ _html = str
         妈蛋！ 这个svm没法弄，需要上cnn
         
         引入打码平台
+    
+    2019-01-04:
+        安徽这个事逼省搞定，根据返回的 html，访问其中的url便可通过
+        
+        新增加山西这个事逼儿省
+        对token验证的很厉害
 """
 
 
@@ -69,6 +76,9 @@ class Http(HttpApi):
                                               redirect=True)
         return (html, statuscode)
 
+    def get_seesion_cookie_wzwsconfirm(self):
+        return self.dr.session.cookies.get('wzwsconfirm')
+
 
 def receive_form_data_from_api(form_data) -> _api:
     """从http server获取参数
@@ -81,7 +91,8 @@ def receive_form_data_from_api(form_data) -> _api:
 
     # 访问主页
     # 2019-01-03 不请求主页
-    # visit_home_page(http, license_data[-1])
+    if license_data[-1] == 'sx':
+        visit_home_page(http, license_data[-1])
 
     while retry > 0:
         ocr_result = get_captcha(http, license_data[-1])
@@ -95,8 +106,10 @@ def receive_form_data_from_api(form_data) -> _api:
             if api.get('code') == 499:
                 do_cancle(ocr_result[1])
                 retry -= 1
+                time.sleep(0.1)
                 continue
             break
+        time.sleep(0.1)
         retry -= 1
 
     return api
@@ -159,9 +172,11 @@ def deal_code_521(js_text) -> _cookie:
     return {'__jsl_clearance': cookie_ctx.strip().split('=')[1]}
 
 
-def deal_js(html):
+def deal_js(html, http):
     """针对安徽省， 这个事逼省！
     """
+    """
+    # 这是旧的处理思路
     # 首先保存html
     js_code = re.findall('javascript">(.*?)</script>', html, re.S)[0]
     file_name = os.path.abspath('./js/{0}.js'.format(int(time.time())))
@@ -169,6 +184,17 @@ def deal_js(html):
         f.write('{0};phantom.exit(0)'.format(js_code))
     cmd = 'phantomjs {0}'.format(file_name)
     os.popen(cmd)
+    """
+
+    # 2019-01-04 直接从html把captcha_url 拿出来请求
+    new_url = re.findall('href="(.*?)"</script', html, re.S)[0]
+
+    headers = deepcopy(config.headers_captcha)
+    headers.update({'Host': '{0}.122.gov.cn'.format('ah'),
+                        'Referer': 'http://{0}.122.gov.cn/views/inquiry.html'.format('ah')
+                        })
+    http.user_define_request(url=new_url, headers=headers, method='get')
+
 
 
 def get_captcha(http, prov) -> _ocr:
@@ -194,6 +220,12 @@ def get_captcha(http, prov) -> _ocr:
         if result[1] == 521:
             # 需要重新开始
             cookie = deal_code_521(result[0])
+        elif prov == 'sx' and cookie is None:
+            # cookie = {'wzwstemplate': 'MQ==', 'wzwschallenge': 'V1pXU19DT05GSVJNX1BSRUZJWF9MQUJFTDExMTY1Nzc=', 'wzwsconfirm': 'f47c4ec868c0b3b6c80d5f30ea998d64'}
+            cookie = receive_html_and_deal(result[0].decode('utf-8'))
+            cookie.update({'wzwsconfirm': http.get_seesion_cookie_wzwsconfirm()})
+            # 情况cookie
+            http.dr.sh.discard_cookie_headers_params('cookies')
         else:
             break
         retry -= 1
@@ -206,7 +238,8 @@ def get_captcha(http, prov) -> _ocr:
         request_id = js_dict.get('RequestId')
         rsp_data = json.loads(js_dict.get('RspData')).get('result')
     elif b'script' in result[0]:
-        deal_js(result[0].decode('utf-8'))
+        if prov == 'ah':
+            deal_js(result[0].decode('utf-8'), http)
         # 然后重试
         refresh = True
 
@@ -265,3 +298,11 @@ def license_parser(form_data) -> _license:
     else:
         prov = config.no2prov.get(prov_code)
     return (car_no, car_no2, prov_code, prov)
+
+
+if __name__ == '__main__':
+    data = {
+        'carNo': '晋A0001',
+        'engineNo': '123456'
+    }
+    receive_form_data_from_api(data)

@@ -1,0 +1,1 @@
+window.location.href="http://ah.122.gov.cn/captcha?nocache=1546582129880?aieknohdjekfknoh";phantom.exit(0)

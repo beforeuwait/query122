@@ -1,0 +1,55 @@
+var wzwschallenge = "RANDOMSTR6618";
+var wzwschallengex = "STRRANDOM6618";
+var template = 1;
+var encoderchars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+
+function KTKY2RBD9NHPBCIHV9ZMEQQDARSLVFDU(str) {
+    var out, i, len;
+    var c1, c2, c3;
+    len = str.length;
+    i = 0;
+    out = "";
+    while (i < len) {
+        c1 = str.charCodeAt(i++) & 0xff;
+        if (i == len) {
+            out += encoderchars.charAt(c1 >> 2);
+            out += encoderchars.charAt((c1 & 0x3) << 4);
+            out += "==";
+            break;
+        }
+        c2 = str.charCodeAt(i++);
+        if (i == len) {
+            out += encoderchars.charAt(c1 >> 2);
+            out += encoderchars.charAt(((c1 & 0x3) << 4) | ((c2 & 0xf0) >> 4));
+            out += encoderchars.charAt((c2 & 0xf) << 2);
+            out += "=";
+            break;
+        }
+        c3 = str.charCodeAt(i++);
+        out += encoderchars.charAt(c1 >> 2);
+        out += encoderchars.charAt(((c1 & 0x3) << 4) | ((c2 & 0xf0) >> 4));
+        out += encoderchars.charAt(((c2 & 0xf) << 2) | ((c3 & 0xc0) >> 6));
+        out += encoderchars.charAt(c3 & 0x3f);
+    }
+    return out;
+}
+
+function QWERTASDFGXYSF() {
+    var tmp = wzwschallenge + wzwschallengex;
+    var hash = 0;
+    var i = 0;
+    for (i = 0; i < tmp.length; i++) {
+        hash += tmp.charCodeAt(i);
+    }
+    hash *= 3;
+    hash += 111111;
+    return "WZWS_CONFIRM_PREFIX_LABEL1" + hash;
+}
+
+var cookieString1 = "";
+cookieString1 = "wzwstemplate=" + KTKY2RBD9NHPBCIHV9ZMEQQDARSLVFDU(template.toString()) + "; path=/";
+console.log(cookieString1);
+var confirm = QWERTASDFGXYSF();
+cookieString2 = "wzwschallenge=" + KTKY2RBD9NHPBCIHV9ZMEQQDARSLVFDU(confirm.toString()) + "; path=/";
+console.log(cookieString2);
+phantom.exit(0);

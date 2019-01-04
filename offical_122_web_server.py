@@ -11,6 +11,8 @@ import time
 import json
 import logging
 import tornado.web
+import offical_122_api
+from importlib import reload
 from tornado.ioloop import IOLoop
 from offical_122_api import receive_form_data_from_api
 
@@ -33,6 +35,7 @@ class MainHandler(tornado.web.RequestHandler):
         self.write('welcome')
 
     def post(self):
+        reload(offical_122_api)
         st = time.time()
         api_info = self.lets_do_spider()
         self.write(api_info)
