@@ -29,7 +29,7 @@ logger.addHandler(handler)
 
 class MainHandler(tornado.web.RequestHandler):
 
-    param_names = ['carNo', 'engineNo']
+    param_names = ['carNo', 'engineNo', 'vin']
 
     def get(self):
         self.write('welcome')
@@ -45,11 +45,13 @@ class MainHandler(tornado.web.RequestHandler):
 
 
     def lets_do_spider(self):
-        """针对2.0版本"""
+        """针对2.0版本
+        增加了一个参数 vin，但是不做处理
+        """
         # 省略了参数验证环节
         engineNo = self.get_argument('engineNo')
         carNo = self.get_argument('carNo')
-
+        vin = self.get_argument('vin')
         data = {
             'carNo': carNo,
             'engineNo': engineNo,

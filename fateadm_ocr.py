@@ -37,8 +37,8 @@ logger.addHandler(handler)
 # 测试账号
 # 免费次数已使用完
 
-pid = '109158'
-passwd = 'nGYglS4Xk5EWNvj5dhF2Y7OEv3sLvzwj'
+pid = '109165'
+passwd = 're1kcchR6WlKKyiY3pVxOJnfY1B+4wnh'
 
 # 请求信息
 # ocr地址

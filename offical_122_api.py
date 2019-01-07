@@ -11,7 +11,6 @@ from HTTP.HttpApi import HttpApi
 from HTTP.utils import MethodCheckError
 from fateadm_ocr import do_ocr
 from fateadm_ocr import do_cancle
-from deal_sx_js import receive_html_and_deal
 
 # type
 
@@ -22,6 +21,7 @@ _cookie = dict
 _api = dict
 _ocr = tuple
 _html = str
+_req_prms = list
 
 """
     author: wangjiawei
@@ -46,6 +46,14 @@ _html = str
         
         新增加山西这个事逼儿省
         对token验证的很厉害
+    2019-01-07:
+            针对山西这个事逼省份的反爬虫
+
+            思路和安徽的极其相似，都是先解析拿到真实js
+            然后执行真实js 写入cookie并刷新
+            垃圾反爬虫 -_-!
+
+            反反思路，先解析，拿到几个字段，然后放入事先安排好的模板里
 """
 
 
@@ -114,6 +122,33 @@ def receive_form_data_from_api(form_data) -> _api:
 
     return api
 
+
+def receive_html_and_parse(html):
+    """针对山西省这个事逼儿省的反反爬虫过程"""
+    js = re.findall('javascript">(.*?)</script>', html, re.S)[0].replace('eval', 'return')
+    js_content = execjs.compile(js)
+    result = js_content.call('f')
+    #拿到wzwschallenge 和 wzwschallengex
+    wzwschallenge = re.findall('var wzwschallenge="RANDOMSTR\d{1,10}";', result)[0]
+    wzwschallengex = re.findall('var wzwschallengex="STRRANDOM\d{1,10}"', result)[0]
+    dynamicurl = re.findall('dynamicurl="(.*?)"', result)[0]
+    template = re.findall('var template=\d{0,10}', result)[0]
+    encoderchars = re.findall('var encoderchars = .*?;', result)[0]
+    # 拿到2个fun
+    fun_1 = re.findall('(function KTKY2RBD9NHPBCIHV9ZMEQQDARSLVFDU.*?)function findDimensions', result)[0]
+    fun_2 = re.findall('(function QWERTASDFGXYSF.*?)function HXXTTKKLLPPP5', result)[0]
+    # 开始拼装js
+    js_final =';'.join([wzwschallengex, wzwschallenge, template, encoderchars, fun_1, fun_2])
+    js_final += ('var confirm = QWERTASDFGXYSF();return([KTKY2RBD9NHPBCIHV9ZMEQQDARSLVFDU(template.toString()),'
+                 ' KTKY2RBD9NHPBCIHV9ZMEQQDARSLVFDU(QWERTASDFGXYSF().toString())])')
+    # 开始执行
+    js_content2 = execjs.compile(js_final)
+    info = js_content2.call('f')
+    # 拼装cookie
+    cookie = {'wzwschallenge': info[1], 'wzwstemplate': info[0]}
+    return (cookie, dynamicurl)
+
+
 def deal_response(js_txt, api_params) -> _api:
     """处理数据
     code: 200   成功
@@ -140,14 +175,27 @@ def deal_response(js_txt, api_params) -> _api:
 
     return api
 
+
 def visit_home_page(http, prov) -> None:
     """访问主页，拿到cookie
     不返回任何
     """
-    req_prms = request_params_switcher('home_page', prov)
-    req_prms[1].update({'Host': '{0}.122.gov.cn'.format(prov),
-                        'Referer': 'http://{0}.122.gov.cn/'.format(prov)})
-    http.user_define_request(url=req_prms[0], headers=req_prms[1], method='get')
+    retry = 3
+    while retry > 0:
+        req_prms = request_params_switcher('home_page', prov)
+        req_prms[1].update({'Host': '{0}.122.gov.cn'.format(prov),
+                            'Referer': 'http://{0}.122.gov.cn/views/inquiry.html'.format(prov)})
+        html_data = http.user_define_request(url=req_prms[0], headers=req_prms[1], method='get')
+        info = receive_html_and_parse(html_data[0].decode('utf-8'))
+        new_url = ''.join(['http://sx.122.gov.cn', info[1]])
+        http.user_define_request(url=new_url, headers=req_prms[1], cookies=info[0], method='get')
+        # 检测ccpassport是否存在，存在即通过
+        ccpassport = http.dr.session.cookies.get('ccpassport')
+        if ccpassport is not None:
+            break
+        else:
+            http.dr.sh.discard_cookie_headers_params('cookies')
+        retry -= 1
 
 
 def deal_code_521(js_text) -> _cookie:
@@ -220,12 +268,6 @@ def get_captcha(http, prov) -> _ocr:
         if result[1] == 521:
             # 需要重新开始
             cookie = deal_code_521(result[0])
-        elif prov == 'sx' and cookie is None:
-            # cookie = {'wzwstemplate': 'MQ==', 'wzwschallenge': 'V1pXU19DT05GSVJNX1BSRUZJWF9MQUJFTDExMTY1Nzc=', 'wzwsconfirm': 'f47c4ec868c0b3b6c80d5f30ea998d64'}
-            cookie = receive_html_and_deal(result[0].decode('utf-8'))
-            cookie.update({'wzwsconfirm': http.get_seesion_cookie_wzwsconfirm()})
-            # 情况cookie
-            http.dr.sh.discard_cookie_headers_params('cookies')
         else:
             break
         retry -= 1
@@ -266,7 +308,7 @@ def get_violation_data(http, license, captcha, form_data) -> _html:
     return result[0]
 
 
-def request_params_switcher(choice, prov) -> object:
+def request_params_switcher(choice, prov) -> _req_prms:
     """组装url，headers"""
     switcher = {
         'home_page': [deepcopy(config.url_query).format(prov), deepcopy(config.headers)],
@@ -298,11 +340,3 @@ def license_parser(form_data) -> _license:
     else:
         prov = config.no2prov.get(prov_code)
     return (car_no, car_no2, prov_code, prov)
-
-
-if __name__ == '__main__':
-    data = {
-        'carNo': '晋A0001',
-        'engineNo': '123456'
-    }
-    receive_form_data_from_api(data)
