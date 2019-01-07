@@ -6,6 +6,8 @@
 重写的目的是，增加灵活，减少引用时的重写
 
 """
+
+import random
 import time
 import HTTP.config as config
 import requests
@@ -13,6 +15,7 @@ from copy import deepcopy
 from HTTP.session_handler import SessionHandler
 from HTTP.utils import logger
 from HTTP.utils import filter_dict
+from HTTP.ua import user_agent_list
 
 # type
 _html = str
@@ -32,7 +35,11 @@ class DealRequest:
         html = b'null_html'
         status_code = 0
         try:
-            response = self.session.get(url=args[0], params=args[1], allow_redirects=args[3], timeout=30)
+            response = self.session.get(url=args[0],
+                                        params=args[1],
+                                        allow_redirects=args[3],
+                                        proxies=config.proxy,
+                                        timeout=30)
         except Exception as e:
             logger.warning('请求出错\t{0}'.format(e, extra=filter_dict))
         else:
@@ -49,7 +56,11 @@ class DealRequest:
         html = b'null_html'
         status_code = 0
         try:
-            response = self.session.post(url=args[0], data=args[2], allow_redirects=args[3], timeout=30)
+            response = self.session.post(url=args[0],
+                                         data=args[2],
+                                         allow_redirects=args[3],
+                                         proxies=config.proxy,
+                                         timeout=30)
         except Exception as e:
             logger.warning('请求出错\t{0}'.format(e, extra=filter_dict))
         else:

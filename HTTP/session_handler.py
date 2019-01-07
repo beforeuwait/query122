@@ -18,12 +18,14 @@ _outer_params = dict
 class SessionHandler:
     """
     承担对session的操作
+
+    2019-01-07  发现该模块对proxies控制等于0！ proxies还是要放到请求上
     """
 
     def __init__(self, session) -> None:
         self._s = session
         # 加载proxy
-        self.update_proxy()
+        # self.update_proxy()
 
     def close_session(self) -> None:
         """关闭session"""
